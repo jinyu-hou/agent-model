@@ -1,0 +1,4 @@
+llm-reasoners
+litellm
+tenacity
+browsergym==0.3.6.dev0
