@@ -6,8 +6,8 @@ from .policy import Policy
 from .world_model import WorldModel
 from .critic import Critic
 from .planner_utils import SearchConfigWrapper, WorldModelWrapper
-from reasoners import Reasoner
-from reasoners.algorithm import DFS
+from .reasoners import Reasoner
+from .reasoners_algorithm import DFS
 
 
 class Planner(AgentModule):

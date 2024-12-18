@@ -5,8 +5,8 @@ from openai import OpenAI
 
 # from opendevin.core.logger import opendevin_logger as logger
 
-from reasoners import SearchConfig as ReasonersSearchConfig
-from reasoners import WorldModel as ReasonersWorldModel
+from .reasoners import SearchConfig as ReasonersSearchConfig
+from .reasoners import WorldModel as ReasonersWorldModel
 
 
 class WorldModelWrapper(ReasonersWorldModel):
