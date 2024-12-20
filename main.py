@@ -38,11 +38,16 @@ def main(job_name,
          model, 
          api_key, 
          output_dir,
-         goal,
          agent,
          config_name,
          max_steps,
-         timeout):
+         timeout,
+         goal=None,
+         gym_env_name=None):
+
+    if goal is None and gym_env_name is None:
+        raise RuntimeError("Must provide either goal or gym_env_name.")
+    
     base_url, custom_llm_provider = model_info[model]
     llm = LLM(model=model,
               api_key=api_key,
@@ -54,16 +59,20 @@ def main(job_name,
     agent_cls = agent_dict[agent]
     agent = agent_cls(llm, config_name=config_name, logger=logger)
     
-    env = gym.make(
-        'browsergym/openended',
-        task_kwargs={'start_url': 'about:blank', 'goal': goal},
-        wait_for_user_message=__WAIT_FOR_USER_MESSAGE,
-        headless=__HEADLESS,
-        slow_mo=__SLOW_MO,
-        viewport=__VIEWPORT,
-        timeout=__TIMEOUT,
-        # disable_env_checker=True,
-    )
+    if goal is not None:
+        env = gym.make(
+            'browsergym/openended',
+            task_kwargs={'start_url': 'about:blank', 'goal': goal},
+            wait_for_user_message=__WAIT_FOR_USER_MESSAGE,
+            headless=__HEADLESS,
+            slow_mo=__SLOW_MO,
+            viewport=__VIEWPORT,
+            timeout=__TIMEOUT,
+            # disable_env_checker=True,
+        )
+    else:
+        env = gym.make(gym_env_name)
+
     print('Environment started')
     env = env.env.env
     history = []
@@ -71,6 +80,7 @@ def main(job_name,
     obs, info = env.reset()
     action = ''
     step_count = 0
+    rewards = []
     while not action.startswith('send_msg_to_user') and step_count < max_steps:
         serializable_obs = get_serializable_obs(env, obs)
         action, thoughts = agent.step(serializable_obs)
@@ -84,6 +94,8 @@ def main(job_name,
         try:
             # Wait for the result within the specified timeout
             obs, reward, terminated, truncated, info = env.step(action)
+            if goal is None:
+                rewards.append(reward)
         except TimeoutException:
             print(f"Environment step timed out after {timeout} seconds")
             error = f"Environment step timed out after {timeout} seconds"
@@ -102,17 +114,33 @@ def main(job_name,
                    and action not in ["send_msg_to_user('Error encountered when browsing.')",
                                       "send_msg_to_user('Too many errors encountered. Task failed.')"])
     
-    session_data = {
-        'goal': goal,
-        'history': history,
-        'is_complete': is_complete,
-        'error': error,
-    }
+    if goal is not None:
+        session_data = {
+            'goal': goal,
+            'history': history,
+            'is_complete': is_complete,
+            'error': error,
+        }
+    else:
+        session_data = {
+            'instance_id': gym_env_name,
+            'history': history,
+            'is_complete': is_complete,
+            'error': error,
+            'test_result': sum(rewards) > 0
+        }
     os.makedirs(output_dir, exist_ok=True)
     current_datetime = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
     output_filename = job_name + '_' + current_datetime + '.json'
     with open(os.path.join(output_dir, output_filename), 'w') as f:
         json.dump(session_data, f)
+
+    if goal is None:
+        with open(os.path.join(output_dir, 'output.jsonl'), 'a') as f:
+            f.write(json.dumps({
+                'instance_id': gym_env_name,
+                'test_result': sum(rewards) > 0
+            }) + '\n')
 
 if __name__ == '__main__':
     default_api_key_path = os.path.join(os.path.dirname(__file__), 'default_api_key.txt')
@@ -137,6 +165,10 @@ if __name__ == '__main__':
     parser.add_argument('--start_idx', type=int, default=0)
     parser.add_argument('--end_idx', type=int, default=9999999)
     parser.add_argument('--output_dir', type=str, default='./browsing_data')
+
+    # WebArena sampling arguments
+    parser.add_argument('--shuffle', action='store_true')
+    parser.add_argument('--seed', type=int, default=42)
     
     # LLM arguments
     parser.add_argument('--model', type=str, default='gpt-4o')
@@ -149,20 +181,45 @@ if __name__ == '__main__':
     # Parse the arguments
     args = parser.parse_args()
     
-    questions = get_dataset(args.dataset, args.data_root)
+    if args.dataset is not 'webarena':
+        questions = get_dataset(args.dataset, args.data_root)
+        
+        for i in range(args.start_idx, min(args.end_idx, len(questions))):
+            instruction = questions[i]
+            job_name = args.job_name + f'_{i}'
+            if glob(os.path.join(args.output_dir, f'{job_name}_*.json')) == []:
+                main(job_name, 
+                    args.model,
+                    args.api_key,
+                    args.output_dir,
+                    args.agent,
+                    args.config_name,
+                    args.max_steps,
+                    args.timeout,
+                    goal=instruction)
+            else:
+                print(f"Existing log detected for {job_name}, skipping ...")
+    else:
+        import browsergym.webarena
+        env_ids = [
+            id for id in gym.envs.registry.keys() if id.startswith('browsergym/webarena')
+        ]
+        if args.shuffle:
+            import random
+            random.Random(args.seed).shuffle(env_ids)
+        env_ids = sorted(env_ids[args.start_idx:args.end_idx], key=lambda s: int(s.split('.')[-1]))
+
+        for env_id in env_ids:
+            if glob(os.path.join(args.output_dir, env_ids)) == []:
+                main(env_id, 
+                    args.model,
+                    args.api_key,
+                    os.path.join(args.output_dir, "output_logs"),
+                    args.agent,
+                    args.config_name,
+                    args.max_steps,
+                    args.timeout,
+                    gym_env_name=env_id)
+            else:
+                print(f"Existing log detected for {env_id}, skipping ...")
     
-    for i in range(args.start_idx, min(args.end_idx, len(questions))):
-        instruction = questions[i]
-        job_name = args.job_name + f'_{i}'
-        if glob(os.path.join(args.output_dir, f'{job_name}_*.json')) == []:
-            main(job_name, 
-                 args.model,
-                 args.api_key,
-                 args.output_dir,
-                 instruction,
-                 args.agent,
-                 args.config_name,
-                 args.max_steps,
-                 args.timeout)
-        else:
-            print(f"Existing log detected for {job_name}, skipping ...")
