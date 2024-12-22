@@ -16,7 +16,7 @@ bash reset_webarena_host.sh
 bash run_webarena_host.sh
 sleep 180
 cd /home/ubuntu/agent-model
-poetry run python main.py \
+python main.py \
     --agent openhands \
     --output_dir evaluation/webarena/browsingagent-rand100 \
     --model gpt-4o \
@@ -32,12 +32,12 @@ bash reset_webarena_host.sh
 bash run_webarena_host.sh
 sleep 180
 cd /home/ubuntu/web-agent-application
-poetry run python web_evaluation/webarena/inference_webarena.py \
+python web_evaluation/webarena/inference_webarena.py \
     --agent reasoner \
     --output_dir evaluation/webarena/singlepolicy-rand100 \
     --model gpt-4o \
     --dataset webarena \
-    --config_name webarena \
+    --config_name browsergym_webarena \
     --end_idx 100 \
     --shuffle \
     --seed 21 \
@@ -49,12 +49,12 @@ bash run_webarena_host.sh
 sleep 180
 cd /home/ubuntu/web-agent-application
 export AGENT_SELECTION="webarena_plan"
-poetry run python web_evaluation/webarena/inference_webarena.py \
+python web_evaluation/webarena/inference_webarena.py \
     --agent-cls reasoner \
     --output_dir web_evaluation/webarena/results/wmp-rand100 \
     --model gpt-4o \
     --dataset webarena \
-    --config_name webarena_world_model \
+    --config_name browsergym_webarena_world_model \
     --end_idx 100 \
     --shuffle \
     --seed 21 \

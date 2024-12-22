@@ -130,8 +130,11 @@ def main(job_name,
             'test_result': sum(rewards) > 0
         }
     os.makedirs(output_dir, exist_ok=True)
-    current_datetime = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    output_filename = job_name + '_' + current_datetime + '.json'
+    if goal is None:
+        output_filename = job_name.split('/')[-1] + '.json'
+    else:
+        current_datetime = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        output_filename = job_name + '_' + current_datetime + '.json'
     with open(os.path.join(output_dir, output_filename), 'w') as f:
         json.dump(session_data, f)
 
@@ -139,7 +142,7 @@ def main(job_name,
         with open(os.path.join(output_dir, 'output.jsonl'), 'a') as f:
             f.write(json.dumps({
                 'instance_id': gym_env_name,
-                'test_result': sum(rewards) > 0
+                'test_result': float(sum(rewards) > 0)
             }) + '\n')
 
 if __name__ == '__main__':
@@ -181,7 +184,7 @@ if __name__ == '__main__':
     # Parse the arguments
     args = parser.parse_args()
     
-    if args.dataset is not 'webarena':
+    if args.dataset != 'webarena':
         questions = get_dataset(args.dataset, args.data_root)
         
         for i in range(args.start_idx, min(args.end_idx, len(questions))):
@@ -210,11 +213,11 @@ if __name__ == '__main__':
         env_ids = sorted(env_ids[args.start_idx:args.end_idx], key=lambda s: int(s.split('.')[-1]))
 
         for env_id in env_ids:
-            if glob(os.path.join(args.output_dir, env_ids)) == []:
+            if not os.path.isfile(os.path.join(args.output_dir, f"{env_id.split('/')[-1]}.json")):
                 main(env_id, 
                     args.model,
                     args.api_key,
-                    os.path.join(args.output_dir, "output_logs"),
+                    args.output_dir,
                     args.agent,
                     args.config_name,
                     args.max_steps,

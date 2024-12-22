@@ -1,3 +1,6 @@
 litellm
 tenacity
+termcolor
+opendevin
+scipy
 browsergym==0.3.6.dev0

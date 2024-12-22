@@ -25,7 +25,8 @@ from .prompts import (
 
 from .configs import (browsergym_config, browsergym_world_model_config, 
                       opendevin_config, opendevin_world_model_config, 
-                      webarena_config, webarena_world_model_config)
+                      opendevin_webarena_config, opendevin_webarena_world_model_config, 
+                      browsergym_webarena_config, browsergym_webarena_world_model_config)
 
 CONFIG_LIBRARY = {
     'browsergym': browsergym_config,
@@ -33,8 +34,10 @@ CONFIG_LIBRARY = {
     'opendevin': opendevin_config,
     'opendevin_llama': opendevin_config,
     'opendevin_world_model': opendevin_world_model_config,
-    'webarena': webarena_config,
-    'webarena_world_model': webarena_world_model_config,
+    'opendevin_webarena': opendevin_webarena_config,
+    'opendevin_webarena_world_model': opendevin_webarena_world_model_config,
+    'browsergym_webarena': browsergym_webarena_config,
+    'browsergym_webarena_world_model': browsergym_webarena_world_model_config,
 }
 
 class ReasonerAgent:
@@ -65,7 +68,7 @@ class ReasonerAgent:
                 strict=False,
                 multiaction=False,
             )
-            self.observation_space = BrowserGymObservationSpace()
+            self.observation_space = BrowserGymObservationSpace(truncation=self.config['truncate_axtree'])
         elif self.environment == 'opendevin':
             self.action_space = OpenDevinBrowserActionSpace(
                 action_subsets=['chat', 'bid'],
