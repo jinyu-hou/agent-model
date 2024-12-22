@@ -11,11 +11,13 @@ export WIKIPEDIA="$BASE_URL:8888/wikipedia_en_all_maxi_2022-05/A/User:The_other_
 export MAP="$BASE_URL:3000"
 export HOMEPAGE="$BASE_URL:4399"
 
+CURR_DIR=$PWD
+
 cd ~
 bash reset_webarena_host.sh
 bash run_webarena_host.sh
 sleep 180
-cd /home/ubuntu/agent-model
+cd $CURR_DIR
 python main.py \
     --agent openhands \
     --output_dir evaluation/webarena/browsingagent-rand100 \
@@ -31,7 +33,7 @@ cd ~
 bash reset_webarena_host.sh
 bash run_webarena_host.sh
 sleep 180
-cd /home/ubuntu/web-agent-application
+cd $CURR_DIR
 python web_evaluation/webarena/inference_webarena.py \
     --agent reasoner \
     --output_dir evaluation/webarena/singlepolicy-rand100 \
@@ -47,7 +49,7 @@ cd ~
 bash reset_webarena_host.sh
 bash run_webarena_host.sh
 sleep 180
-cd /home/ubuntu/web-agent-application
+cd $CURR_DIR
 export AGENT_SELECTION="webarena_plan"
 python web_evaluation/webarena/inference_webarena.py \
     --agent-cls reasoner \
